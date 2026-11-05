@@ -1,0 +1,4 @@
+Model,MAE,RMSE,R2
+Linear Regression,0.999,1.247,0.568
+Gradient Boosting,0.987,1.248,0.567
+Baseline (mean),1.616,1.897,-0.0
