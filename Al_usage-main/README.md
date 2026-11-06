@@ -245,4 +245,3 @@ Technologies
  ● Joblib
  ● Streamlit
  ● Jupyter Notebook
-
