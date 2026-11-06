@@ -18,8 +18,8 @@ MODELS_DIR = Path(__file__).parent / "Models"
 @st.cache_resource
 def load_files():
     info = joblib.load(MODELS_DIR / "feature_info.joblib")      # columns and input options
-    scaler = joblib.load(MODELS_DIR / "scaler.joblib")           # scaler fitted in Notebook 02
-    models = {name: joblib.load(MODELS_DIR / file)               # the four trained models
+    scaler = joblib.load(MODELS_DIR / "scaler.joblib")          # scaler fitted in Notebook 02
+    models = {name: joblib.load(MODELS_DIR / file)              # the four trained models
               for name, file in info["file_names"].items()}
     results = pd.read_csv(MODELS_DIR / "model_comparison.csv", index_col=0)
     return info, scaler, models, results
@@ -33,14 +33,18 @@ info, scaler, models, results = load_files()
 st.title("AI Usage and Productivity Prediction")
 st.write("Enter the details of a user, choose a model, and predict the Productivity Score.")
 
-model_name = st.sidebar.selectbox("Choose a model", list(models.keys()))
-st.sidebar.write("Best model on the test set: " + info["best_model"])
+model_names = list(models.keys())
+default_index = model_names.index(info["best_model"])
+
+model_name = st.sidebar.selectbox("Choose a model", model_names, index=default_index)
+st.sidebar.write("Best model by cross-validation R²: " + info["best_model"])
 
 # ---------------------------------------------------------------
 # 3. Input fields for a new user
 # ---------------------------------------------------------------
 st.subheader("User details")
 col_left, col_right = st.columns(2)
+
 user_input = {}
 
 # text columns become dropdown lists
@@ -54,14 +58,13 @@ for i, (column, (low, high, median)) in enumerate(info["num_ranges"].items()):
         user_input[column] = st.number_input(column.replace("_", " "),
                                              min_value=low, max_value=high, value=median)
 
-
 # ---------------------------------------------------------------
 # 4. Prepare the input exactly like the training data
 # ---------------------------------------------------------------
 def prepare(user_input):
     row = pd.DataFrame([user_input])
-    row = pd.get_dummies(row)                                    # text -> 0/1 columns
-    row = row.reindex(columns=info["columns"], fill_value=0)     # same columns and order as training
+    row = pd.get_dummies(row)                                  # text -> 0/1 columns
+    row = row.reindex(columns=info["columns"], fill_value=0)   # same columns and order as training
     row = row.astype(float)
     row[info["num_cols"]] = scaler.transform(row[info["num_cols"]])  # same scaling as training
     return row
@@ -69,8 +72,7 @@ def prepare(user_input):
 
 def predict(model, row):
     value = model.predict(row)[0]
-    return min(max(value, 1.0), 10.0)                            # the score is between 1 and 10
-
+    return min(max(value, 1.0), 10.0)                          # the score is between 1 and 10
 
 # ---------------------------------------------------------------
 # 5. Prediction and comparison of all models
@@ -88,6 +90,7 @@ if st.button("Predict"):
     for column, (name, model) in zip(columns, models.items()):
         all_predictions[name] = predict(model, new_row)
         column.metric(name, round(all_predictions[name], 2))
+
     st.bar_chart(pd.Series(all_predictions))
 
 st.subheader("Model performance on the test set")
